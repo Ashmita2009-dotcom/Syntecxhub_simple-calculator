@@ -1,0 +1,176 @@
+"""Command-line Number Guessing Game."""
+
+import random
+from pathlib import Path
+
+BEST_SCORE_FILE = Path(__file__).with_name("number_guessing_game_best_score.txt")
+
+
+def display_welcome() -> None:
+    """Show the game's welcome screen."""
+    print("=" * 35)
+    print("NUMBER GUESSING GAME")
+    print("=" * 35)
+    print("\nTry to guess the secret number!")
+
+
+def choose_difficulty() -> tuple[int, str]:
+    """Ask the player to choose a difficulty and return the max range."""
+    difficulty_options = {
+        "1": (10, "Easy"),
+        "2": (50, "Medium"),
+        "3": (100, "Hard"),
+    }
+
+    while True:
+        print("\nChoose Difficulty")
+        print("\n1. Easy (1-10)")
+        print("2. Medium (1-50)")
+        print("3. Hard (1-100)")
+
+        try:
+            choice = input("\nEnter choice: ").strip()
+        except EOFError:
+            print("Input cancelled. Exiting game.")
+            raise SystemExit
+
+        if choice in difficulty_options:
+            max_number, level_name = difficulty_options[choice]
+            return max_number, level_name
+
+        print("Invalid choice. Please enter 1, 2, or 3.")
+
+
+def generate_secret_number(max_number: int) -> int:
+    """Return a random secret number within the selected range."""
+    return random.randint(1, max_number)
+
+
+def get_valid_guess(max_number: int) -> int:
+    """Keep asking for a valid guess until the player enters a good value."""
+    while True:
+        try:
+            guess_input = input("\nEnter your guess: ").strip()
+        except EOFError:
+            print("Input cancelled. Exiting game.")
+            raise SystemExit
+
+        if not guess_input:
+            print("Input cannot be empty. Please enter a number.")
+            continue
+
+        try:
+            guess = int(guess_input)
+        except ValueError:
+            print("Please enter a valid integer.")
+            continue
+
+        if not 1 <= guess <= max_number:
+            print(f"Please enter a number between 1 and {max_number}.")
+            continue
+
+        return guess
+
+
+def check_guess(secret_number: int, guess: int) -> str:
+    """Compare the guess to the secret number and return the result."""
+    if guess < secret_number:
+        print("Too low! Try again.")
+        return "low"
+    if guess > secret_number:
+        print("Too high! Try again.")
+        return "high"
+    print("Congratulations!")
+    return "correct"
+
+
+def load_best_score() -> int | None:
+    """Load the best score from a file if it exists."""
+    if not BEST_SCORE_FILE.exists():
+        return None
+
+    try:
+        score = BEST_SCORE_FILE.read_text(encoding="utf-8").strip()
+        return int(score) if score else None
+    except ValueError:
+        return None
+
+
+def save_best_score(best_score: int) -> None:
+    """Save the best score to a text file."""
+    BEST_SCORE_FILE.write_text(str(best_score), encoding="utf-8")
+
+
+def display_statistics(secret_number: int, attempts: int, difficulty_name: str, best_score: int | None) -> None:
+    """Show the final game statistics."""
+    print("\n--- Game Summary ---")
+    print(f"Secret number: {secret_number}")
+    print(f"Attempts taken: {attempts}")
+    print(f"Difficulty level: {difficulty_name}")
+
+    if best_score is None:
+        print("Current Best Score: 0 attempts")
+    else:
+        print(f"Current Best Score: {best_score} attempts")
+
+
+def play_again() -> bool:
+    """Ask the player whether to play again."""
+    while True:
+        try:
+            choice = input("\nPlay Again? (Y/N): ").strip().upper()
+        except EOFError:
+            print("Input cancelled. Exiting game.")
+            raise SystemExit
+
+        if choice in {"Y", "YES"}:
+            return True
+        if choice in {"N", "NO"}:
+            return False
+
+        print("Please enter Y or N.")
+
+
+def play_game() -> None:
+    """Run a full game loop including rounds, scoring, and replay."""
+    best_score = load_best_score()
+
+    while True:
+        display_welcome()
+        max_number, difficulty_name = choose_difficulty()
+        secret_number = generate_secret_number(max_number)
+
+        print(f"\nI'm thinking of a number between 1 and {max_number}...")
+
+        attempts = 0
+        while True:
+            guess = get_valid_guess(max_number)
+            attempts += 1
+            result = check_guess(secret_number, guess)
+
+            if result == "correct":
+                print(f"\nYou guessed the number in {attempts} attempts.")
+                break
+
+        previous_best_score = best_score
+        if best_score is None or attempts < best_score:
+            best_score = attempts
+            save_best_score(best_score)
+            print("\nNew Best Score!")
+        else:
+            print(f"\nBest Score remains: {best_score} attempts")
+
+        display_statistics(secret_number, attempts, difficulty_name, best_score)
+
+        if not play_again():
+            print("\nThank you for playing! Goodbye!")
+            break
+
+
+def main() -> None:
+    """Entry point for the game."""
+    play_game()
+
+
+if __name__ == "__main__":
+    main()
